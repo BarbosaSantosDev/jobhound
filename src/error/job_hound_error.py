@@ -1,0 +1,2 @@
+class JobHoundError(Exception):
+    pass
