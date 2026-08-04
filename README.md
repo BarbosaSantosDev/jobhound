@@ -138,3 +138,7 @@ curl -X POST http://localhost:8000/api/v1/profiles -H "Content-Type: application
 Os termos de busca em cada fonte (Gupy/Nerdin/RemoteOK) são derivados automaticamente
 da sua stack — não é algo que você configura à mão. Ver `ARQUITETURA.md` para o fluxo
 completo.
+
+
+<img width="1856" height="728" alt="image" src="https://github.com/user-attachments/assets/fe6a84a0-03c6-4c25-995d-6d2494aef373" />
+
