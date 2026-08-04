@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+*.egg-info/
+.mypy_cache/
+.ruff_cache/
+
+# Config local de ferramentas de IDE/tooling — não é parte do projeto
+.claude/
+CLAUDE.md

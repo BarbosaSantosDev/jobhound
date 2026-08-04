@@ -1,0 +1,70 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: jobhound_db
+    environment:
+      POSTGRES_USER: agentjob
+      POSTGRES_PASSWORD: agentjob
+      POSTGRES_DB: agentjob
+    ports:
+      - "${DB_HOST_PORT:-5434}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agentjob"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: jobhound_ollama
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # Sem GPU aqui de propósito: reservar uma GPU NVIDIA neste arquivo faria o
+    # `docker compose up` falhar pra qualquer pessoa sem nvidia-container-toolkit
+    # instalado. Quem tiver GPU NVIDIA usa o overlay docker-compose.gpu.yml
+    # (ver README) — o Ollama funciona em CPU por padrão, só mais lento.
+
+  # NOVO SERVIÇO: Container temporário para baixar o modelo
+  ollama-init:
+    image: ollama/ollama:latest
+    container_name: jobhound_ollama_init
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    command: pull ${OLLAMA_MODEL:-qwen2.5:3b}
+    depends_on:
+      ollama:
+        condition: service_healthy
+
+  app:
+    build: .
+    container_name: jobhound_app
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://agentjob:agentjob@db:5432/agentjob
+      OLLAMA_BASE_URL: http://ollama:11434
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      # O app agora espera o download do modelo terminar com sucesso
+      ollama-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  pgdata:
+  ollama_data:

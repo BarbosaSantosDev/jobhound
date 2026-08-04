@@ -1,0 +1,21 @@
+# Overlay opcional: dá a GPU NVIDIA pro Ollama.
+#
+# Pré-requisito no host: nvidia-container-toolkit instalado e o runtime "nvidia"
+# registrado no Docker.
+#   curl -s -L https://nvidia.github.io/libnvidia-container/stable/rpm/nvidia-container-toolkit.repo \
+#     | sudo tee /etc/yum.repos.d/nvidia-container-toolkit.repo   # (rpm; troque pro gerenciador da sua distro)
+#   sudo dnf install -y nvidia-container-toolkit
+#   sudo nvidia-ctk runtime configure --runtime=docker
+#   sudo systemctl restart docker
+#
+# Uso:
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
+services:
+  ollama:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
