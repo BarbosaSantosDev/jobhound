@@ -1,4 +1,4 @@
-# agent-job
+# jobhound
 
 Agente LLM que busca vagas, extrai fatos objetivos com um modelo local (Ollama) e
 pontua o match contra seu perfil com lógica determinística no domínio.
@@ -81,8 +81,8 @@ Sem isso, tudo continua funcionando normalmente — só mais lento na etapa de L
 - Perfil é 100% via API (`POST`/`PUT /api/v1/profiles`) — persiste no Postgres,
   que tem seu próprio volume (`pgdata`), então sobrevive a `docker compose down`
   (sem o `-v`)
-- `agent-job run`/`agent-job top` funcionam dentro do container:
-  `docker compose exec app agent-job run`
+- `jobhound run`/`jobhound top` funcionam dentro do container:
+  `docker compose exec app jobhound run`
 - O scheduler (roda o pipeline a cada 3h) não faz parte do compose — rode-o à
   parte: `docker compose exec app python -m src.scheduler`
 - Trocando `MATCHER_PROVIDER=anthropic` no `.env`, o serviço `ollama` deixa de ser
@@ -92,8 +92,8 @@ Sem isso, tudo continua funcionando normalmente — só mais lento na etapa de L
 ## Uso
 
 ```bash
-agent-job run    # roda o pipeline uma vez
-agent-job top    # lista os melhores matches
+jobhound run    # roda o pipeline uma vez
+jobhound top    # lista os melhores matches
 python -m src.scheduler   # roda a cada 3h
 ```
 

@@ -2,7 +2,7 @@ import asyncio
 
 import typer
 
-app = typer.Typer(help="agent-job: agente de busca de vagas compatíveis com seu perfil")
+app = typer.Typer(help="jobhound: agente de busca de vagas compatíveis com seu perfil")
 
 
 @app.command()
