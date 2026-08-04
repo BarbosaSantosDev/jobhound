@@ -6,6 +6,11 @@ pontua o match contra seu perfil com lógica determinística no domínio.
 Arquitetura: Clean Architecture + DDD. O LLM **extrai fatos**; o **domínio pontua**
 (`src/domain/service/scoring.py`, função pura e testável).
 
+Este repositório é a API e o pipeline (o backend). O dashboard web é um projeto
+separado — <!-- TODO: link do repo do frontend --> — e é opcional: rodando só
+este repositório, o resultado chega por notificação no Telegram e pela CLI
+(`jobhound top`). Ver `ARQUITETURA.md` para o fluxo completo.
+
 ## Estrutura
 
 ```

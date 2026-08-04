@@ -5,10 +5,19 @@ para extrair **fatos objetivos** de cada vaga, e um código determinístico (sem
 pontua o quão bem ela combina com o seu perfil. O LLM não decide "gosto" nem inventa
 número — só lê e extrai o que está escrito na vaga.
 
+Este repositório é a API e o pipeline (o backend). O dashboard web é um projeto
+separado: <!-- TODO: link do repo do frontend -->. Rodando só este repositório,
+sem o dashboard, o resultado chega por notificação no Telegram e pela CLI
+(`jobhound top`) — o dashboard é uma forma opcional de visualizar o mesmo resultado
+pelo navegador.
+
 ## As peças
 
-- **backend** (`jobhound`) — API FastAPI + pipeline. Python, Clean Architecture + DDD.
-- **frontend** (`jobhound-frontend/jobhound`) — dashboard React, consome a API.
+- **backend** (este repositório) — API FastAPI + pipeline. Python, Clean
+  Architecture + DDD. Funciona sozinho — Telegram e `jobhound top` são as saídas
+  nativas.
+- **frontend** (repositório separado, opcional) — dashboard React, consome a API.
+  <!-- TODO: link do repo do frontend -->
 - **Postgres** — sobe junto no `docker-compose` (`db`), com seu próprio volume
   (`pgdata`). Pode apontar pra outra instância trocando `DATABASE_URL` no `.env`.
 - **Ollama** — roda local (container `jobhound_ollama`), serve o modelo que extrai
@@ -31,9 +40,11 @@ número — só lê e extrai o que está escrito na vaga.
    senioridade bate (peso 30), localização/remoto bate (peso 20).
 5. **Salvar + notificar** — o resultado vai pro Postgres; se a vaga for boa
    (`is_worth_applying`) ou merecer revisão manual (`needs_manual_review`), dispara um
-   Telegram (se configurado).
-6. **Frontend** — o dashboard busca `/api/v1/matches` e `/api/v1/stats` a cada poucos
-   segundos (polling) e mostra a lista sem precisar recarregar a página.
+   Telegram (se configurado). Esse passo, mais `jobhound top` na CLI, já é suficiente
+   pra usar o projeto só com este repositório.
+6. **Frontend** (opcional, repositório separado) — o dashboard busca `/api/v1/matches`
+   e `/api/v1/stats` a cada poucos segundos (polling) e mostra a lista sem precisar
+   recarregar a página.
 
 ```
 perfil (você)
@@ -41,7 +52,7 @@ perfil (você)
   -> Gupy / Nerdin / RemoteOK --fetch--> vagas novas (dedup por fingerprint)
   -> LLM (Ollama) extrai fatos --> domínio pontua (0-100 + motivos)
   -> Postgres salva --> Telegram notifica (se match)
-  -> frontend faz polling e mostra
+  -> jobhound top (CLI) ou frontend (opcional) mostram o resultado
 ```
 
 ## Como disparar o pipeline
