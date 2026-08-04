@@ -83,38 +83,3 @@ da revisão de hoje. Pra expor publicamente na internet, ainda falta:
 
 Nada disso impede rodar isso pra você mesmo hoje — só importa se algum dia isso for
 além de "eu uso sozinho".
-
-## Correções desta revisão
-
-- `MatchScore` (Pydantic) era instanciado com argumento posicional em dois lugares —
-  quebrava `GET /matches` e `GET /stats` com 500 sempre. Corrigido para keyword arg; a
-  validação de faixa (0-100), que nunca rodava (usava `__post_init__`, hook de
-  dataclass, não de Pydantic), agora funciona via `@field_validator`.
-- `timezone.UTC` (typo — o certo é `timezone.utc`) quebraria toda avaliação de vaga
-  nova. Corrigido.
-- `alembic/env.py` misturava engine síncrono com driver assíncrono (`asyncpg`) — toda
-  migration quebrava com `MissingGreenlet`. Corrigido para `create_async_engine` +
-  `run_sync`.
-- Dependências faltando no `pyproject.toml` (`beautifulsoup4`, `langchain-core`,
-  `langchain-ollama`) — funcionavam no venv local só por instalação manual, mas
-  quebravam a imagem Docker construída do zero.
-- CORS (backend) e a URL da API (frontend) agora são configuráveis por variável de
-  ambiente (`CORS_ORIGINS`, `REACT_APP_API_URL`) em vez de fixas em `localhost`.
-
-Testes BDD (`behave`) passam (3 cenários, 0 falhas), e os dois builds — backend em
-Docker e frontend (`npm run build`) — estão limpos.
-
-## Preparação para repositório público
-
-Ao decidir abrir o repositório, achamos (e corrigimos) dois problemas que só importam
-nesse cenário — "clonar e rodar na máquina de outra pessoa":
-
-- `docker-compose.yml` dependia de uma rede Docker externa e de um Postgres de outro
-  projeto local (conveniente pro dev original, mas inexistente em qualquer outra
-  máquina). Restaurado um serviço `db` (Postgres) self-contained no próprio compose —
-  `docker compose up` agora funciona sozinho, sem pré-requisito nenhum além do Docker.
-- `profile/profile.yaml` guardava dados pessoais reais (nome, resumo de carreira) e não
-  era mais lido por nenhum código (o perfil vive 100% no Postgres, via API) — era
-  documentação/plumbing morta que só existia como conteúdo publicável sem função.
-  Removido o arquivo, a pasta, a linha `COPY profile ./profile` do Dockerfile e o volume
-  correspondente no compose.
