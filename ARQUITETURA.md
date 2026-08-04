@@ -48,7 +48,7 @@ perfil (você)
 
 - `POST /api/v1/pipeline/run` — usado pelo botão "rodar pipeline" do frontend. Roda em
   background, uma vez; devolve 409 se já tiver um rodando.
-- `agent-job run` — mesma coisa, via CLI.
+- `jobhound run` — mesma coisa, via CLI.
 - `python -m src.scheduler` — roda o pipeline a cada 3h. Não faz parte do
   `docker-compose` hoje; suba manualmente se quiser recorrência automática.
 

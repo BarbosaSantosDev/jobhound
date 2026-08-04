@@ -1,5 +1,5 @@
 [project]
-name = "agent-job"
+name = "jobhound"
 version = "0.1.0"
 description = "Agente de busca de vagas compatíveis com o perfil (Clean Architecture + DDD)"
 requires-python = ">=3.12"
@@ -25,7 +25,7 @@ anthropic = ["anthropic>=0.34"]
 dev = ["behave>=1.2.6", "ruff>=0.5", "mypy>=1.10"]
 
 [project.scripts]
-agent-job = "src.cli:app"
+jobhound = "src.cli:app"
 
 [tool.ruff]
 line-length = 100
