@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, status
 
+from src.app.query import ListProfiles
 from src.app.usecase import (
     GetProfile,
     RegisterProfile,
@@ -8,6 +9,7 @@ from src.app.usecase import (
     UpdateProfileInput,
 )
 from src.infra.routers.dependencies import (
+    get_list_profiles,
     get_profile_usecase,
     get_register_profile_usecase,
     get_update_profile_usecase,
@@ -15,6 +17,13 @@ from src.infra.routers.dependencies import (
 from src.infra.routers.schemas import ProfileSchema, ProfileWriteSchema
 
 router = APIRouter(prefix="/api/v1/profiles", tags=["profile"])
+
+
+@router.get("", response_model=list[ProfileSchema])
+async def list_profiles(
+    use_case: ListProfiles = Depends(get_list_profiles),
+) -> list[ProfileSchema]:
+    return [ProfileSchema.from_domain(p) for p in await use_case.execute()]
 
 
 @router.post("", response_model=ProfileSchema, status_code=status.HTTP_201_CREATED)
@@ -32,6 +41,7 @@ async def register_profile(
             preferred_locations=body.preferred_locations,
             accepts_remote=body.accepts_remote,
             summary=body.summary,
+            enabled_sources=body.enabled_sources,
         )
     )
     return ProfileSchema.from_domain(profile)
@@ -62,6 +72,7 @@ async def update_profile(
             preferred_locations=body.preferred_locations,
             accepts_remote=body.accepts_remote,
             summary=body.summary,
+            enabled_sources=body.enabled_sources,
         )
     )
     return ProfileSchema.from_domain(profile)

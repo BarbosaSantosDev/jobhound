@@ -15,3 +15,7 @@ class ProfileRepository(ABC):
     @abstractmethod
     async def check_if_exists(self, slug: str) -> bool:
         pass
+
+    @abstractmethod
+    async def list_all(self) -> list[Profile]:
+        """Todos os perfis, do atualizado mais recentemente para o mais antigo."""

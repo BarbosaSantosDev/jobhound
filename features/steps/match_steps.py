@@ -101,3 +101,18 @@ def step_manual(context):
     assert context.result.needs_manual_review, (
         f"score={context.result.score.value}, flags={context.result.red_flags}"
     )
+
+
+_KIND_BY_PHRASE = {"contar a favor": "pro", "contar contra": "con", "ser neutro": "info"}
+
+
+@then('o motivo "{text}" deve {phrase}')
+def step_reason_kind(context, text, phrase):
+    by_text = {r.text: r.kind.value for r in context.result.reasons}
+    assert text in by_text, f"motivo ausente; motivos: {list(by_text)}"
+    assert by_text[text] == _KIND_BY_PHRASE[phrase], f"{text!r} é {by_text[text]}"
+
+
+@then('a modalidade registrada deve ser "{work_mode}"')
+def step_work_mode(context, work_mode):
+    assert context.result.work_mode == work_mode, context.result.work_mode

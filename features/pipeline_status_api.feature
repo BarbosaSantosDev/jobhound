@@ -13,3 +13,9 @@ Feature: API de status do pipeline
     When eu rodo o pipeline, consulto o status ainda em andamento e tento rodar de novo
     Then a resposta de status deve ter running true
     And a segunda chamada de rodar deve retornar 409
+
+  Scenario: O status informa qual perfil está sendo farejado
+    Given a API do jobhound configurada com um pipeline falso
+    When eu rodo o pipeline do perfil "ana" e consulto o status ainda em andamento
+    Then a resposta de status deve ter running true
+    And o status deve informar o perfil "ana"

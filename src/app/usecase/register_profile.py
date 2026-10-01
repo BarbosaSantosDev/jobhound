@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 
 from src.app.repository import ProfileRepository
 from src.domain.entity.profile import Profile
+from src.domain.value_object import SourceName
 from src.error import ProfileAlreadyExistsError
 
 
@@ -15,6 +16,7 @@ class RegisterProfileInput:
     preferred_locations: list[str] = field(default_factory=list)
     accepts_remote: bool = True
     summary: str = ""
+    enabled_sources: list[SourceName] = field(default_factory=lambda: list(SourceName))
 
 
 class RegisterProfile:
@@ -31,6 +33,7 @@ class RegisterProfile:
             preferred_locations=input.preferred_locations,
             accepts_remote=input.accepts_remote,
             summary=input.summary,
+            enabled_sources=input.enabled_sources,
         )
 
         if await self._profile_repository.check_if_exists(profile.slug):

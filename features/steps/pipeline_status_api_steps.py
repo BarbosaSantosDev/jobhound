@@ -3,9 +3,15 @@ import asyncio
 import httpx
 from behave import given, then, when
 
+from features.fakes import InMemoryPipelineRunRepository, InMemoryProfileRepository
 from src.app.dto.pipeline_report import PipelineReport
+from src.app.query import GetLastRun
 from src.app.service.pipeline_status import PipelineStatusTracker
-from src.infra.routers.dependencies import get_pipeline, get_pipeline_status_tracker
+from src.infra.routers.dependencies import (
+    get_last_run,
+    get_pipeline,
+    get_pipeline_status_tracker,
+)
 from src.server import create_app
 
 
@@ -31,6 +37,8 @@ def step_setup_app(context):
     context.fake_pipeline = _PausedPipeline()
     context.app.dependency_overrides[get_pipeline] = lambda: context.fake_pipeline
     context.app.dependency_overrides[get_pipeline_status_tracker] = lambda: context.tracker
+    runs, profiles = InMemoryPipelineRunRepository(), InMemoryProfileRepository()
+    context.app.dependency_overrides[get_last_run] = lambda: GetLastRun(runs, profiles)
 
 
 async def _get_status(context):
@@ -84,3 +92,24 @@ def step_assert_running(context):
 @then("a segunda chamada de rodar deve retornar 409")
 def step_assert_409(context):
     assert context.second_run_response.status_code == 409
+
+
+async def _run_profile_and_check(context, profile):
+    transport = httpx.ASGITransport(app=context.app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        run_task = asyncio.create_task(client.post(f"/api/v1/pipeline/run?profile={profile}"))
+        await asyncio.wait_for(context.fake_pipeline.started.wait(), timeout=1)
+        status_response = await client.get("/api/v1/pipeline/status")
+        context.fake_pipeline.release.set()
+        await run_task
+        return status_response
+
+
+@when('eu rodo o pipeline do perfil "{profile}" e consulto o status ainda em andamento')
+def step_run_profile(context, profile):
+    context.status_response = asyncio.run(_run_profile_and_check(context, profile))
+
+
+@then('o status deve informar o perfil "{profile}"')
+def step_status_profile(context, profile):
+    assert context.status_response.json()["profile"] == profile

@@ -1,10 +1,24 @@
 # jobhound
 
-Agente LLM que busca vagas, extrai fatos objetivos com um modelo local (Ollama) e
-pontua o match contra seu perfil com lógica determinística no domínio.
+jobhound é um assistente pessoal de busca de vagas: procura em múltiplas fontes,
+filtra o ruído e avisa só das vagas que combinam com o seu perfil — pra quem não
+quer garimpar vaga por vaga manualmente. O diferencial é como ele decide: o LLM só
+**extrai fatos objetivos** de cada vaga (stack, senioridade, modo de trabalho);
+quem pontua o match é um **scoring determinístico no domínio**, com peso declarado
+por critério e o motivo explicado em cada resultado — nunca "a IA achou que é uma
+boa vaga" sem justificativa.
 
-Arquitetura: Clean Architecture + DDD. O LLM **extrai fatos**; o **domínio pontua**
-(`src/domain/service/scoring.py`, função pura e testável).
+## Demo
+
+<!-- TODO: screenshot da notificação do Telegram -->
+
+Clean Architecture + DDD (`src/domain/service/scoring.py` é o scoring — função
+pura e testável, sem LLM).
+
+Este repositório é a API e o pipeline (o backend). O dashboard web é um projeto
+separado — <!-- TODO: link do repo do frontend --> — e é opcional: rodando só
+este repositório, o resultado chega por notificação no Telegram e pela CLI
+(`jobhound top`). Ver `ARQUITETURA.md` para o fluxo completo.
 
 ## Estrutura
 
@@ -92,8 +106,8 @@ Sem isso, tudo continua funcionando normalmente — só mais lento na etapa de L
 ## Uso
 
 ```bash
-jobhound run    # roda o pipeline uma vez
-jobhound top    # lista os melhores matches
+jobhound run [--profile <slug>]   # roda o pipeline uma vez (padrão: perfil editado por último)
+jobhound top [--profile <slug>]   # lista os melhores matches
 python -m src.scheduler   # roda a cada 3h
 ```
 
@@ -138,3 +152,7 @@ curl -X POST http://localhost:8000/api/v1/profiles -H "Content-Type: application
 Os termos de busca em cada fonte (Gupy/Nerdin/RemoteOK) são derivados automaticamente
 da sua stack — não é algo que você configura à mão. Ver `ARQUITETURA.md` para o fluxo
 completo.
+
+## Licença
+
+MIT — ver [LICENSE](LICENSE).

@@ -5,10 +5,19 @@ para extrair **fatos objetivos** de cada vaga, e um código determinístico (sem
 pontua o quão bem ela combina com o seu perfil. O LLM não decide "gosto" nem inventa
 número — só lê e extrai o que está escrito na vaga.
 
+Este repositório é a API e o pipeline (o backend). O dashboard web é um projeto
+separado: <!-- TODO: link do repo do frontend -->. Rodando só este repositório,
+sem o dashboard, o resultado chega por notificação no Telegram e pela CLI
+(`jobhound top`) — o dashboard é uma forma opcional de visualizar o mesmo resultado
+pelo navegador.
+
 ## As peças
 
-- **backend** (`jobhound`) — API FastAPI + pipeline. Python, Clean Architecture + DDD.
-- **frontend** (`jobhound-frontend/jobhound`) — dashboard React, consome a API.
+- **backend** (este repositório) — API FastAPI + pipeline. Python, Clean
+  Architecture + DDD. Funciona sozinho — Telegram e `jobhound top` são as saídas
+  nativas.
+- **frontend** (repositório separado, opcional) — dashboard React, consome a API.
+  <!-- TODO: link do repo do frontend -->
 - **Postgres** — sobe junto no `docker-compose` (`db`), com seu próprio volume
   (`pgdata`). Pode apontar pra outra instância trocando `DATABASE_URL` no `.env`.
 - **Ollama** — roda local (container `jobhound_ollama`), serve o modelo que extrai
@@ -17,23 +26,30 @@ número — só lê e extrai o que está escrito na vaga.
 ## O fluxo ponta a ponta
 
 1. **Perfil** — você cadastra um perfil (nome, senioridade, stack principal/secundária,
-   localizações preferidas, aceita remoto, resumo). Os termos de busca de cada fonte
-   (Gupy, Nerdin, RemoteOK) são **derivados automaticamente** da sua stack — você não
-   escolhe isso diretamente.
+   localizações preferidas, aceita remoto, resumo, fontes ligadas). Os termos de busca
+   de cada fonte (Gupy, Nerdin, RemoteOK) são **derivados automaticamente** da sua
+   stack. Você escolhe só quais fontes ficam ligadas; entra no faro a fonte ligada que
+   tem termo de busca (`Profile.active_sources()`). Dá pra ter vários perfis.
 2. **Buscar vagas** (`FetchNewJobs`) — cada fonte é consultada com os termos derivados.
-   Vagas repetidas (mesmo título+empresa+local, via hash) são descartadas, e vagas já
-   salvas no banco não entram de novo.
+   Vagas repetidas (mesmo título+empresa+local, via hash) são gravadas uma vez só. Uma
+   vaga já gravada volta para avaliação se o perfil do faro ainda não a avaliou — cada
+   perfil tem as próprias avaliações e etapas (`matches.profile_id`).
 3. **Extrair fatos** (`EvaluateJobMatch` → LLM via Ollama) — para cada vaga nova, o LLM
    lê a descrição e extrai só fatos objetivos: stack mencionada, senioridade, modo de
    trabalho, cidade, faixa salarial.
 4. **Pontuar** (`ScoreJob`, domínio puro, sem LLM) — compara os fatos extraídos com o
    seu perfil e calcula um score 0-100 com motivos explicados: stack bate (peso 50),
-   senioridade bate (peso 30), localização/remoto bate (peso 20).
+   senioridade bate (peso 30), localização/remoto bate (peso 20). Cada motivo diz para
+   que lado pesou (`pro`, `con` ou `info`).
 5. **Salvar + notificar** — o resultado vai pro Postgres; se a vaga for boa
    (`is_worth_applying`) ou merecer revisão manual (`needs_manual_review`), dispara um
-   Telegram (se configurado).
-6. **Frontend** — o dashboard busca `/api/v1/matches` e `/api/v1/stats` a cada poucos
-   segundos (polling) e mostra a lista sem precisar recarregar a página.
+   Telegram (se configurado). Esse passo, mais `jobhound top` na CLI, já é suficiente
+   pra usar o projeto só com este repositório. Cada execução fica registrada em
+   `pipeline_runs`, com o resultado de cada fonte (inclusive as que falharam).
+6. **Frontend** (opcional, repositório separado) — o dashboard busca `/api/v1/matches`,
+   `/api/v1/stats` e `/api/v1/pipeline/status` a cada poucos segundos (polling) e mostra
+   a lista sem precisar recarregar a página. Lá você também faz a triagem de cada vaga
+   (salvar, candidatei, descartar).
 
 ```
 perfil (você)
@@ -41,16 +57,35 @@ perfil (você)
   -> Gupy / Nerdin / RemoteOK --fetch--> vagas novas (dedup por fingerprint)
   -> LLM (Ollama) extrai fatos --> domínio pontua (0-100 + motivos)
   -> Postgres salva --> Telegram notifica (se match)
-  -> frontend faz polling e mostra
+  -> jobhound top (CLI) ou frontend (opcional) mostram o resultado
 ```
 
 ## Como disparar o pipeline
 
-- `POST /api/v1/pipeline/run` — usado pelo botão "rodar pipeline" do frontend. Roda em
-  background, uma vez; devolve 409 se já tiver um rodando.
-- `jobhound run` — mesma coisa, via CLI.
+- `POST /api/v1/pipeline/run?profile=<slug>` — usado pelo botão "Farejar agora" do
+  frontend. Roda em background, uma vez; devolve 409 se já tiver um rodando. Sem
+  `profile`, usa o perfil editado por último.
+- `jobhound run --profile <slug>` — mesma coisa, via CLI.
 - `python -m src.scheduler` — roda o pipeline a cada 3h. Não faz parte do
   `docker-compose` hoje; suba manualmente se quiser recorrência automática.
+
+## Rotas da API
+
+Todas sob `/api/v1`. Onde aparece `?profile=<slug>`, o parâmetro é opcional: sem ele,
+vale tudo (ou o perfil editado por último, no caso do pipeline).
+
+| Rota | O que faz |
+|---|---|
+| `GET /profiles` | lista os perfis (atualizado mais recentemente primeiro) |
+| `POST /profiles` · `GET`/`PUT /profiles/{slug}` | registra, lê e atualiza um perfil (inclui `enabled_sources`; devolve também `active_sources`) |
+| `GET /matches?profile=` | vagas avaliadas, com score, motivos `{kind, text}`, `stage`, `work_mode` e `summary` |
+| `PATCH /matches/{job_id}/stage?profile=` | move a vaga para `new`, `saved`, `applied` ou `discarded` |
+| `GET /stats?profile=` | contagens + `errors` do último faro |
+| `POST /pipeline/run?profile=` | dispara um faro em background |
+| `GET /pipeline/status?profile=` | estado ao vivo + `last_run` (último faro registrado, com status por fonte) |
+
+Avaliações feitas antes de existir `profile_id` (legadas) aparecem para todos os perfis:
+não dá para saber com qual perfil cada uma foi feita.
 
 ## Camadas (Clean Architecture + DDD)
 
@@ -83,38 +118,3 @@ da revisão de hoje. Pra expor publicamente na internet, ainda falta:
 
 Nada disso impede rodar isso pra você mesmo hoje — só importa se algum dia isso for
 além de "eu uso sozinho".
-
-## Correções desta revisão
-
-- `MatchScore` (Pydantic) era instanciado com argumento posicional em dois lugares —
-  quebrava `GET /matches` e `GET /stats` com 500 sempre. Corrigido para keyword arg; a
-  validação de faixa (0-100), que nunca rodava (usava `__post_init__`, hook de
-  dataclass, não de Pydantic), agora funciona via `@field_validator`.
-- `timezone.UTC` (typo — o certo é `timezone.utc`) quebraria toda avaliação de vaga
-  nova. Corrigido.
-- `alembic/env.py` misturava engine síncrono com driver assíncrono (`asyncpg`) — toda
-  migration quebrava com `MissingGreenlet`. Corrigido para `create_async_engine` +
-  `run_sync`.
-- Dependências faltando no `pyproject.toml` (`beautifulsoup4`, `langchain-core`,
-  `langchain-ollama`) — funcionavam no venv local só por instalação manual, mas
-  quebravam a imagem Docker construída do zero.
-- CORS (backend) e a URL da API (frontend) agora são configuráveis por variável de
-  ambiente (`CORS_ORIGINS`, `REACT_APP_API_URL`) em vez de fixas em `localhost`.
-
-Testes BDD (`behave`) passam (3 cenários, 0 falhas), e os dois builds — backend em
-Docker e frontend (`npm run build`) — estão limpos.
-
-## Preparação para repositório público
-
-Ao decidir abrir o repositório, achamos (e corrigimos) dois problemas que só importam
-nesse cenário — "clonar e rodar na máquina de outra pessoa":
-
-- `docker-compose.yml` dependia de uma rede Docker externa e de um Postgres de outro
-  projeto local (conveniente pro dev original, mas inexistente em qualquer outra
-  máquina). Restaurado um serviço `db` (Postgres) self-contained no próprio compose —
-  `docker compose up` agora funciona sozinho, sem pré-requisito nenhum além do Docker.
-- `profile/profile.yaml` guardava dados pessoais reais (nome, resumo de carreira) e não
-  era mais lido por nenhum código (o perfil vive 100% no Postgres, via API) — era
-  documentação/plumbing morta que só existia como conteúdo publicável sem função.
-  Removido o arquivo, a pasta, a linha `COPY profile ./profile` do Dockerfile e o volume
-  correspondente no compose.

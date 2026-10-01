@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 
 from src.app.query import GetPipelineStatus
 from src.app.service import PipelineStatusTracker
@@ -37,10 +37,11 @@ async def _run_in_background(pipeline: PipelineWorkflow, status: PipelineStatusT
 @router.post("/pipeline/run", response_model=PipelineRunResponse, status_code=202)
 async def run_pipeline(
     background_tasks: BackgroundTasks,
+    profile: str | None = Query(default=None, description="slug do perfil a farejar"),
     pipeline: PipelineWorkflow = Depends(get_pipeline),
     status: PipelineStatusTracker = Depends(get_pipeline_status_tracker),
 ) -> PipelineRunResponse:
-    if not await status.try_start():
+    if not await status.try_start(profile):
         raise HTTPException(status_code=409, detail="Pipeline já está em execução")
 
     background_tasks.add_task(_run_in_background, pipeline, status)
@@ -49,7 +50,8 @@ async def run_pipeline(
 
 @router.get("/pipeline/status", response_model=PipelineStatusSchema)
 async def get_pipeline_status(
+    profile: str | None = Query(default=None, description="último faro deste perfil"),
     use_case: GetPipelineStatus = Depends(get_pipeline_status_usecase),
 ) -> PipelineStatusSchema:
-    status = await use_case.execute()
+    status = await use_case.execute(profile)
     return PipelineStatusSchema.from_domain(status)

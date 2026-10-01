@@ -5,23 +5,30 @@ from functools import lru_cache
 
 from dotenv import load_dotenv
 
-from src.app.query import ListTopMatches
+from src.app.query import GetLastRun, ListProfiles, ListTopMatches
 from src.app.repository import ProfileRepository
 from src.app.service import PipelineStatusTracker
 from src.app.usecase import (
+    ChangeJobStage,
     EvaluateJobMatch,
     FetchNewJobs,
     GetProfile,
     RegisterProfile,
     UpdateProfile,
 )
-from src.app.workflow import PipelineWorkflow
+from src.app.workflow import PipelineWorkflow, RunTarget
 from src.domain.entity.profile import Profile
 from src.domain.service import FactExtractor, JobSource, ScoreJob
+from src.domain.value_object import SourceName
+from src.error import NoProfileError, ProfileNotFoundError
 from src.infra.database import get_session_factory
 from src.infra.gateway import GupySource, NerdinSource, RemoteOKSource, TelegramNotifier
 from src.infra.llm import LangChainExtractor
-from src.infra.repository import JobRepositorySQLAlchemy, ProfileRepositorySQLAlchemy
+from src.infra.repository import (
+    JobRepositorySQLAlchemy,
+    PipelineRunRepositorySQLAlchemy,
+    ProfileRepositorySQLAlchemy,
+)
 
 load_dotenv()
 
@@ -38,12 +45,12 @@ def build_profile_repo() -> ProfileRepository:
     return ProfileRepositorySQLAlchemy(get_session_factory())
 
 
-async def load_profile() -> Profile | None:
-    return await build_profile_repo().load()
-
-
 def build_get_profile() -> GetProfile:
     return GetProfile(build_profile_repo())
+
+
+def build_list_profiles() -> ListProfiles:
+    return ListProfiles(build_profile_repo())
 
 
 def build_update_profile() -> UpdateProfile:
@@ -69,14 +76,13 @@ def build_extractor() -> FactExtractor:
 
 
 def build_sources(profile: Profile) -> list[JobSource]:
-    sources: list[JobSource] = []
-    if profile.search.gupy_terms:
-        sources.append(GupySource(profile.search.gupy_terms))
-    if profile.search.nerdin_platforms:
-        sources.append(NerdinSource(platforms=profile.search.nerdin_platforms))
-    if profile.search.remoteok_tags:
-        sources.append(RemoteOKSource(profile.search.remoteok_tags))
-    return sources
+    # Quais fontes rodam é decisão do domínio (Profile.active_sources).
+    factories = {
+        SourceName.GUPY: lambda: GupySource(profile.search.gupy_terms),
+        SourceName.NERDIN: lambda: NerdinSource(platforms=profile.search.nerdin_platforms),
+        SourceName.REMOTEOK: lambda: RemoteOKSource(profile.search.remoteok_tags),
+    }
+    return [factories[name]() for name in profile.active_sources()]
 
 
 @lru_cache
@@ -87,25 +93,35 @@ def build_pipeline_status_tracker() -> PipelineStatusTracker:
     return PipelineStatusTracker()
 
 
-async def build_pipeline() -> PipelineWorkflow:
+async def build_pipeline(profile_slug: str | None = None) -> PipelineWorkflow:
+    """Sem slug, usa o perfil atualizado mais recentemente (comportamento anterior)."""
     job_repo = JobRepositorySQLAlchemy(get_session_factory())
 
-    profile = await load_profile()
+    profile = await build_profile_repo().load(profile_slug)
     if profile is None:
-        raise RuntimeError(
-            "Nenhum perfil cadastrado ainda — registre um via POST /api/v1/profiles "
-            "antes de rodar o pipeline."
-        )
+        if profile_slug is not None:
+            raise ProfileNotFoundError(profile_slug)
+        raise NoProfileError()
 
     status = build_pipeline_status_tracker()
     return PipelineWorkflow(
-        fetch_jobs=FetchNewJobs(build_sources(profile), job_repo),
+        fetch_jobs=FetchNewJobs(build_sources(profile), job_repo, profile_id=profile.id),
         evaluate=EvaluateJobMatch(build_extractor(), ScoreJob(), profile, status=status),
         job_repo=job_repo,
         notifier=TelegramNotifier(telegram_bot_token, telegram_chat_id),
         status=status,
+        run_repo=PipelineRunRepositorySQLAlchemy(get_session_factory()),
+        target=RunTarget(profile_id=profile.id, profile_slug=profile.slug),
     )
 
 
+def build_get_last_run() -> GetLastRun:
+    return GetLastRun(PipelineRunRepositorySQLAlchemy(get_session_factory()), build_profile_repo())
+
+
+def build_change_job_stage() -> ChangeJobStage:
+    return ChangeJobStage(JobRepositorySQLAlchemy(get_session_factory()), build_profile_repo())
+
+
 def build_top_matches() -> ListTopMatches:
-    return ListTopMatches(JobRepositorySQLAlchemy(get_session_factory()))
+    return ListTopMatches(JobRepositorySQLAlchemy(get_session_factory()), build_profile_repo())

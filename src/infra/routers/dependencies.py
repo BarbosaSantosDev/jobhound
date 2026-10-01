@@ -1,13 +1,16 @@
 from functools import lru_cache
 
-from fastapi import Depends
+from fastapi import Depends, Query
 
-from src.app.query import GetPipelineStatus, ListTopMatches
+from src.app.query import GetLastRun, GetPipelineStatus, ListProfiles, ListTopMatches
 from src.app.service import PipelineStatusTracker
-from src.app.usecase import GetProfile, RegisterProfile, UpdateProfile
+from src.app.usecase import ChangeJobStage, GetProfile, RegisterProfile, UpdateProfile
 from src.app.workflow import PipelineWorkflow
 from src.container import (
+    build_change_job_stage,
+    build_get_last_run,
     build_get_profile,
+    build_list_profiles,
     build_pipeline,
     build_pipeline_status_tracker,
     build_register_profile,
@@ -16,10 +19,12 @@ from src.container import (
 )
 
 
-async def get_pipeline() -> PipelineWorkflow:
+async def get_pipeline(
+    profile: str | None = Query(default=None, description="slug do perfil a farejar"),
+) -> PipelineWorkflow:
     # Sem lru_cache de propósito: monta o grafo fresco a cada run,
     # garantindo que edições no perfil valem no próximo pipeline.
-    return await build_pipeline()
+    return await build_pipeline(profile)
 
 
 def get_pipeline_status_tracker() -> PipelineStatusTracker:
@@ -32,10 +37,16 @@ def get_pipeline_status_tracker() -> PipelineStatusTracker:
     return build_pipeline_status_tracker()
 
 
+@lru_cache
+def get_last_run() -> GetLastRun:
+    return build_get_last_run()
+
+
 def get_pipeline_status_usecase(
     tracker: PipelineStatusTracker = Depends(get_pipeline_status_tracker),
+    last_run: GetLastRun = Depends(get_last_run),
 ) -> GetPipelineStatus:
-    return GetPipelineStatus(tracker)
+    return GetPipelineStatus(tracker, last_run)
 
 
 @lru_cache
@@ -44,8 +55,18 @@ def get_top_matches() -> ListTopMatches:
 
 
 @lru_cache
+def get_change_job_stage() -> ChangeJobStage:
+    return build_change_job_stage()
+
+
+@lru_cache
 def get_profile_usecase() -> GetProfile:
     return build_get_profile()
+
+
+@lru_cache
+def get_list_profiles() -> ListProfiles:
+    return build_list_profiles()
 
 
 @lru_cache

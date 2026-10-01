@@ -5,6 +5,8 @@ import unicodedata
 
 from pydantic import BaseModel, Field
 
+from src.domain.value_object.source_name import SourceName
+
 
 def _slugify(name: str) -> str:
     normalized = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
@@ -40,6 +42,18 @@ class Profile(BaseModel):
     accepts_remote: bool = True
     summary: str
     search: SearchPreferences = Field(default_factory=SearchPreferences)
+    # o que o candidato ligou; o que de fato roda é active_sources()
+    enabled_sources: list[SourceName] = Field(default_factory=lambda: list(SourceName))
+
+    def active_sources(self) -> list[SourceName]:
+        """Fontes que entram no próximo faro: ligadas pelo candidato E com termo
+        de busca derivado da stack (fonte sem termo não teria o que buscar)."""
+        has_terms = {
+            SourceName.GUPY: bool(self.search.gupy_terms),
+            SourceName.NERDIN: bool(self.search.nerdin_platforms),
+            SourceName.REMOTEOK: bool(self.search.remoteok_tags),
+        }
+        return [s for s in SourceName if s in self.enabled_sources and has_terms[s]]
 
     @staticmethod
     def create(
@@ -51,6 +65,7 @@ class Profile(BaseModel):
         preferred_locations: list[str] | None = None,
         accepts_remote: bool = True,
         summary: str = "",
+        enabled_sources: list[SourceName] | None = None,
     ) -> Profile:
         secondary_stack = secondary_stack or []
         return Profile(
@@ -65,6 +80,7 @@ class Profile(BaseModel):
             accepts_remote=accepts_remote,
             summary=summary,
             search=SearchPreferences.derive(primary_stack, secondary_stack),
+            enabled_sources=list(SourceName) if enabled_sources is None else enabled_sources,
         )
 
     @classmethod

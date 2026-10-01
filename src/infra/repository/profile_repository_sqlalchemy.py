@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from src.app.repository import ProfileRepository
 from src.domain.entity.profile import Profile, SearchPreferences
+from src.domain.value_object import SourceName
 from src.infra.model.profile_model import ProfileModel
 
 
@@ -26,6 +27,7 @@ class ProfileRepositorySQLAlchemy(ProfileRepository):
             model.accepts_remote = profile.accepts_remote
             model.summary = profile.summary
             model.search = profile.search.model_dump()
+            model.enabled_sources = [s.value for s in profile.enabled_sources]
 
             await session.commit()
             await session.refresh(model)
@@ -40,6 +42,11 @@ class ProfileRepositorySQLAlchemy(ProfileRepository):
                 stmt = stmt.order_by(ProfileModel.updated_at.desc())
             model = (await session.execute(stmt.limit(1))).scalar_one_or_none()
             return _to_entity(model) if model is not None else None
+
+    async def list_all(self) -> list[Profile]:
+        async with self._session_factory() as session:
+            stmt = select(ProfileModel).order_by(ProfileModel.updated_at.desc())
+            return [_to_entity(m) for m in (await session.execute(stmt)).scalars()]
 
     async def check_if_exists(self, slug: str) -> bool:
         async with self._session_factory() as session:
@@ -60,4 +67,5 @@ def _to_entity(model: ProfileModel) -> Profile:
         accepts_remote=model.accepts_remote,
         summary=model.summary,
         search=SearchPreferences(**(model.search or {})),
+        enabled_sources=[SourceName(s) for s in model.enabled_sources],
     )
