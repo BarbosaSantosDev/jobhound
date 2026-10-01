@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from src.app.repository import JobRepository
 from src.domain.entity import Job, MatchResult
-from src.domain.value_object import JobStage, MatchScore
+from src.domain.value_object import JobStage, MatchScore, Reason
 from src.infra.model import JobModel, MatchModel
 
 
@@ -39,7 +39,7 @@ class JobRepositorySQLAlchemy(JobRepository):
                 MatchModel(
                     job_id=result.job_id,
                     score=result.score.value,
-                    reasons=result.reasons,
+                    reasons=[r.model_dump(mode="json") for r in result.reasons],
                     red_flags=result.red_flags,
                     evaluated_at=result.evaluated_at,
                     stage=result.stage.value,
@@ -78,7 +78,7 @@ class JobRepositorySQLAlchemy(JobRepository):
                     MatchResult(
                         job_id=mm.job_id,
                         score=MatchScore(value=mm.score),
-                        reasons=list(mm.reasons),
+                        reasons=[Reason(**r) for r in mm.reasons],
                         red_flags=list(mm.red_flags),
                         evaluated_at=mm.evaluated_at,
                         stage=JobStage(mm.stage),

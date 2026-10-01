@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from src.app.service import PipelineStatus
 from src.domain.entity import Job, Profile
 from src.domain.entity.match_result import MatchResult
-from src.domain.value_object import JobStage
+from src.domain.value_object import JobStage, ReasonKind
 
 
 class JobSchema(BaseModel):
@@ -19,9 +19,14 @@ class JobSchema(BaseModel):
     fetched_at: datetime
 
 
+class ReasonSchema(BaseModel):
+    kind: ReasonKind
+    text: str
+
+
 class MatchResultSchema(BaseModel):
     score: int
-    reasons: list[str]
+    reasons: list[ReasonSchema]
     red_flags: list[str]
     is_worth_applying: bool
     needs_manual_review: bool
@@ -47,7 +52,7 @@ class MatchSchema(BaseModel):
             ),
             result=MatchResultSchema(
                 score=result.score.value,
-                reasons=result.reasons,
+                reasons=[ReasonSchema(kind=r.kind, text=r.text) for r in result.reasons],
                 red_flags=result.red_flags,
                 is_worth_applying=result.is_worth_applying,
                 needs_manual_review=result.needs_manual_review,

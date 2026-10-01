@@ -3,6 +3,9 @@ import httpx
 from src.domain.entity.job import Job
 from src.domain.entity.match_result import MatchResult
 from src.domain.service.notifier import Notifier
+from src.domain.value_object import ReasonKind
+
+_MARK = {ReasonKind.PRO: "+", ReasonKind.CON: "−", ReasonKind.INFO: "•"}
 
 
 class TelegramNotifier(Notifier):
@@ -25,7 +28,7 @@ class TelegramNotifier(Notifier):
 
     def _format(self, job: Job, result: MatchResult) -> str:
         tag = "🎯" if result.is_worth_applying else "🟡 revisar manualmente"
-        reasons = "\n".join(f"• {r}" for r in result.reasons)
+        reasons = "\n".join(f"{_MARK[r.kind]} {r.text}" for r in result.reasons)
         flags = (
             "\n⚠️ " + ", ".join(result.red_flags) if result.red_flags else ""
         )
