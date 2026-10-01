@@ -41,6 +41,7 @@ async def register_profile(
             preferred_locations=body.preferred_locations,
             accepts_remote=body.accepts_remote,
             summary=body.summary,
+            enabled_sources=body.enabled_sources,
         )
     )
     return ProfileSchema.from_domain(profile)
@@ -71,6 +72,7 @@ async def update_profile(
             preferred_locations=body.preferred_locations,
             accepts_remote=body.accepts_remote,
             summary=body.summary,
+            enabled_sources=body.enabled_sources,
         )
     )
     return ProfileSchema.from_domain(profile)

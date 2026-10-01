@@ -1,12 +1,12 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
 from src.app.service import PipelineStatus
 from src.domain.entity import Job, Profile
 from src.domain.entity.match_result import MatchResult
-from src.domain.value_object import JobStage, ReasonKind, WorkMode
+from src.domain.value_object import JobStage, ReasonKind, SourceName, WorkMode
 
 
 class JobSchema(BaseModel):
@@ -125,11 +125,19 @@ class ProfileWriteSchema(BaseModel):
     preferred_locations: list[str] = []
     accepts_remote: bool = True
     summary: str = ""
+    enabled_sources: list[SourceName] = Field(default_factory=lambda: list(SourceName))
+
+    @field_validator("enabled_sources")
+    @classmethod
+    def _dedupe(cls, value: list[SourceName]) -> list[SourceName]:
+        return list(dict.fromkeys(value))
 
 
 class ProfileSchema(ProfileWriteSchema):
     slug: str
     search: SearchPreferencesSchema
+    # ligadas pelo candidato E com termo de busca: o que o próximo faro usa
+    active_sources: list[SourceName]
 
     @classmethod
     def from_domain(cls, p: Profile) -> "ProfileSchema":
@@ -143,6 +151,8 @@ class ProfileSchema(ProfileWriteSchema):
             preferred_locations=p.preferred_locations,
             accepts_remote=p.accepts_remote,
             summary=p.summary,
+            enabled_sources=p.enabled_sources,
+            active_sources=p.active_sources(),
             search=SearchPreferencesSchema(
                 gupy_terms=p.search.gupy_terms,
                 nerdin_platforms=p.search.nerdin_platforms,

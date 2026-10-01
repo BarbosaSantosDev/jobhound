@@ -19,6 +19,7 @@ from src.app.usecase import (
 from src.app.workflow import PipelineWorkflow
 from src.domain.entity.profile import Profile
 from src.domain.service import FactExtractor, JobSource, ScoreJob
+from src.domain.value_object import SourceName
 from src.infra.database import get_session_factory
 from src.infra.gateway import GupySource, NerdinSource, RemoteOKSource, TelegramNotifier
 from src.infra.llm import LangChainExtractor
@@ -74,14 +75,13 @@ def build_extractor() -> FactExtractor:
 
 
 def build_sources(profile: Profile) -> list[JobSource]:
-    sources: list[JobSource] = []
-    if profile.search.gupy_terms:
-        sources.append(GupySource(profile.search.gupy_terms))
-    if profile.search.nerdin_platforms:
-        sources.append(NerdinSource(platforms=profile.search.nerdin_platforms))
-    if profile.search.remoteok_tags:
-        sources.append(RemoteOKSource(profile.search.remoteok_tags))
-    return sources
+    # Quais fontes rodam é decisão do domínio (Profile.active_sources).
+    factories = {
+        SourceName.GUPY: lambda: GupySource(profile.search.gupy_terms),
+        SourceName.NERDIN: lambda: NerdinSource(platforms=profile.search.nerdin_platforms),
+        SourceName.REMOTEOK: lambda: RemoteOKSource(profile.search.remoteok_tags),
+    }
+    return [factories[name]() for name in profile.active_sources()]
 
 
 @lru_cache

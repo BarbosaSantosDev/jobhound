@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from src.app.repository import ProfileRepository
 from src.domain.entity.profile import Profile, SearchPreferences
+from src.domain.value_object import SourceName
 from src.infra.model.profile_model import ProfileModel
 
 
@@ -26,6 +27,7 @@ class ProfileRepositorySQLAlchemy(ProfileRepository):
             model.accepts_remote = profile.accepts_remote
             model.summary = profile.summary
             model.search = profile.search.model_dump()
+            model.enabled_sources = [s.value for s in profile.enabled_sources]
 
             await session.commit()
             await session.refresh(model)
@@ -65,4 +67,5 @@ def _to_entity(model: ProfileModel) -> Profile:
         accepts_remote=model.accepts_remote,
         summary=model.summary,
         search=SearchPreferences(**(model.search or {})),
+        enabled_sources=[SourceName(s) for s in model.enabled_sources],
     )

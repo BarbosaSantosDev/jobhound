@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 
 from src.app.repository import ProfileRepository
 from src.domain.entity.profile import Profile, SearchPreferences
+from src.domain.value_object import SourceName
 from src.error import ProfileNotFoundError
 
 
@@ -16,6 +17,7 @@ class UpdateProfileInput:
     preferred_locations: list[str] = field(default_factory=list)
     accepts_remote: bool = True
     summary: str = ""
+    enabled_sources: list[SourceName] = field(default_factory=lambda: list(SourceName))
 
 
 class UpdateProfile:
@@ -39,5 +41,6 @@ class UpdateProfile:
             accepts_remote=input.accepts_remote,
             summary=input.summary,
             search=SearchPreferences.derive(input.primary_stack, input.secondary_stack),
+            enabled_sources=input.enabled_sources,
         )
         return await self._profile_repo.save(profile)

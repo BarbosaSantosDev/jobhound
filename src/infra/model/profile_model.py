@@ -21,6 +21,9 @@ class ProfileModel(Base):
     accepts_remote: Mapped[bool] = mapped_column(Boolean, default=True)
     summary: Mapped[str] = mapped_column(Text, default="")
     search: Mapped[dict] = mapped_column(JSONB, default=dict)
+    enabled_sources: Mapped[list[str]] = mapped_column(
+        ARRAY(String), server_default="{gupy,nerdin,remoteok}"
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),
