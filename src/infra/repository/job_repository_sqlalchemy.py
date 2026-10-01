@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from src.app.repository import JobRepository
 from src.domain.entity import Job, MatchResult
-from src.domain.value_object import JobStage, MatchScore, Reason
+from src.domain.value_object import JobStage, MatchScore, Reason, WorkMode
 from src.infra.model import JobModel, MatchModel
 
 
@@ -43,6 +43,7 @@ class JobRepositorySQLAlchemy(JobRepository):
                     red_flags=result.red_flags,
                     evaluated_at=result.evaluated_at,
                     stage=result.stage.value,
+                    work_mode=result.work_mode.value if result.work_mode else None,
                 )
             )
             await session.commit()
@@ -82,6 +83,7 @@ class JobRepositorySQLAlchemy(JobRepository):
                         red_flags=list(mm.red_flags),
                         evaluated_at=mm.evaluated_at,
                         stage=JobStage(mm.stage),
+                        work_mode=WorkMode(mm.work_mode) if mm.work_mode else None,
                     ),
                 )
                 for jm, mm in rows

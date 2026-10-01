@@ -111,3 +111,8 @@ def step_reason_kind(context, text, phrase):
     by_text = {r.text: r.kind.value for r in context.result.reasons}
     assert text in by_text, f"motivo ausente; motivos: {list(by_text)}"
     assert by_text[text] == _KIND_BY_PHRASE[phrase], f"{text!r} é {by_text[text]}"
+
+
+@then('a modalidade registrada deve ser "{work_mode}"')
+def step_work_mode(context, work_mode):
+    assert context.result.work_mode == work_mode, context.result.work_mode

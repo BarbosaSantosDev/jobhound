@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 
 from pydantic import BaseModel, Field
 
-from src.domain.value_object import JobStage, MatchScore, Reason
+from src.domain.value_object import JobStage, MatchScore, Reason, WorkMode
 
 BLOCKING_FLAGS = {"seniority_mismatch", "stack_incompatible"}
 
@@ -15,6 +15,8 @@ class MatchResult(BaseModel):
     red_flags: list[str] = Field(default_factory=list)
     evaluated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     stage: JobStage = JobStage.NEW
+    # modalidade extraída da vaga; None em avaliações anteriores a este campo
+    work_mode: WorkMode | None = None
 
     @property
     def is_worth_applying(self) -> bool:

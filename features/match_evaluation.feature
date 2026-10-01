@@ -9,6 +9,7 @@ Feature: Avaliação de match entre vaga e perfil
     When o matcher avalia a vaga
     Then o score deve ser maior ou igual a 70
     And a vaga deve ser marcada como digna de aplicação
+    And a modalidade registrada deve ser "remote"
 
   Scenario: Vaga sênior com stack incompatível
     Given um perfil backend pleno com Python e FastAPI
@@ -22,6 +23,7 @@ Feature: Avaliação de match entre vaga e perfil
     And uma vaga que menciona Python sem senioridade nem modo de trabalho
     When o matcher avalia a vaga
     Then a vaga deve ser marcada para revisão manual
+    And a modalidade registrada deve ser "not_informed"
   Scenario: Cada motivo diz para que lado pesou
     Given um perfil backend pleno com Python e FastAPI
     And uma vaga presencial sênior que exige Java

@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from src.app.service import PipelineStatus
 from src.domain.entity import Job, Profile
 from src.domain.entity.match_result import MatchResult
-from src.domain.value_object import JobStage, ReasonKind
+from src.domain.value_object import JobStage, ReasonKind, WorkMode
 
 
 class JobSchema(BaseModel):
@@ -33,6 +33,7 @@ class MatchResultSchema(BaseModel):
     needs_manual_review: bool
     evaluated_at: datetime
     stage: JobStage
+    work_mode: WorkMode | None = None
 
 
 class MatchSchema(BaseModel):
@@ -60,6 +61,7 @@ class MatchSchema(BaseModel):
                 needs_manual_review=result.needs_manual_review,
                 evaluated_at=result.evaluated_at,
                 stage=result.stage,
+                work_mode=result.work_mode,
             ),
         )
 

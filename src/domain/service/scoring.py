@@ -43,6 +43,7 @@ class ScoreJob:
             score=MatchScore(value=min(card.score, 100)),
             reasons=card.reasons,
             red_flags=card.red_flags,
+            work_mode=input.facts.work_mode,
         )
 
     def _stack(self, card: _Scorecard, input: ScoreInput) -> None:
