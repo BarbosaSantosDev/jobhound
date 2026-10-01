@@ -4,9 +4,10 @@ from fastapi import Depends
 
 from src.app.query import GetPipelineStatus, ListProfiles, ListTopMatches
 from src.app.service import PipelineStatusTracker
-from src.app.usecase import GetProfile, RegisterProfile, UpdateProfile
+from src.app.usecase import ChangeJobStage, GetProfile, RegisterProfile, UpdateProfile
 from src.app.workflow import PipelineWorkflow
 from src.container import (
+    build_change_job_stage,
     build_get_profile,
     build_list_profiles,
     build_pipeline,
@@ -42,6 +43,11 @@ def get_pipeline_status_usecase(
 @lru_cache
 def get_top_matches() -> ListTopMatches:
     return build_top_matches()
+
+
+@lru_cache
+def get_change_job_stage() -> ChangeJobStage:
+    return build_change_job_stage()
 
 
 @lru_cache

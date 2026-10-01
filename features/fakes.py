@@ -5,8 +5,10 @@ import asyncio
 
 import httpx
 
-from src.app.repository import ProfileRepository
+from src.app.repository import JobRepository, ProfileRepository
+from src.domain.entity import Job, MatchResult
 from src.domain.entity.profile import Profile
+from src.domain.value_object import JobStage, MatchScore
 
 
 class InMemoryProfileRepository(ProfileRepository):
@@ -33,6 +35,50 @@ class InMemoryProfileRepository(ProfileRepository):
 
     async def list_all(self) -> list[Profile]:
         return list(reversed(self._by_slug.values()))
+
+
+class InMemoryJobRepository(JobRepository):
+    def __init__(self) -> None:
+        self.jobs: dict[str, Job] = {}
+        self.matches: list[MatchResult] = []
+
+    async def exists(self, fingerprint: str) -> bool:
+        return any(j.fingerprint == fingerprint for j in self.jobs.values())
+
+    async def save(self, job: Job) -> None:
+        self.jobs[job.id] = job
+
+    async def save_match(self, result: MatchResult) -> None:
+        self.matches.append(result)
+
+    async def top_matches(self, limit: int = 10) -> list[tuple[Job, MatchResult]]:
+        ranked = sorted(self.matches, key=lambda m: m.score.value, reverse=True)[:limit]
+        return [(self.jobs[m.job_id], m) for m in ranked]
+
+    async def set_stage(self, job_id: str, stage: JobStage) -> bool:
+        found = False
+        for i, m in enumerate(self.matches):
+            if m.job_id == job_id:
+                self.matches[i] = m.model_copy(update={"stage": stage})
+                found = True
+        return found
+
+
+def make_job(job_id: str, title: str = "Vaga de teste", **extra) -> Job:
+    return Job(
+        id=job_id,
+        title=title,
+        company=extra.pop("company", "Empresa X"),
+        location=extra.pop("location", "Remoto"),
+        description=extra.pop("description", "..."),
+        url=extra.pop("url", f"https://example.com/{job_id}"),
+        source=extra.pop("source", "fake"),
+        **extra,
+    )
+
+
+def make_match(job_id: str, score: int = 80, **extra) -> MatchResult:
+    return MatchResult(job_id=job_id, score=MatchScore(value=score), reasons=[], **extra)
 
 
 async def _call(app, method: str, path: str, json=None):

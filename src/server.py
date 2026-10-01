@@ -4,12 +4,18 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from src.error import JobHoundError, ProfileAlreadyExistsError, ProfileNotFoundError
+from src.error import (
+    JobHoundError,
+    JobNotFoundError,
+    ProfileAlreadyExistsError,
+    ProfileNotFoundError,
+)
 from src.infra.routers import matches, pipeline, profile, stats
 
 _STATUS_BY_ERROR = {
     ProfileAlreadyExistsError: 409,
     ProfileNotFoundError: 404,
+    JobNotFoundError: 404,
 }
 
 _DEFAULT_CORS_ORIGINS = "http://localhost:3000,http://localhost:5173"
@@ -21,7 +27,7 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[o.strip() for o in origins.split(",") if o.strip()],
-        allow_methods=["GET", "POST", "PUT"],
+        allow_methods=["GET", "POST", "PUT", "PATCH"],
         allow_headers=["*"],
     )
     app.include_router(matches.router)

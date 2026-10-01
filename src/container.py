@@ -9,6 +9,7 @@ from src.app.query import ListProfiles, ListTopMatches
 from src.app.repository import ProfileRepository
 from src.app.service import PipelineStatusTracker
 from src.app.usecase import (
+    ChangeJobStage,
     EvaluateJobMatch,
     FetchNewJobs,
     GetProfile,
@@ -109,6 +110,10 @@ async def build_pipeline() -> PipelineWorkflow:
         notifier=TelegramNotifier(telegram_bot_token, telegram_chat_id),
         status=status,
     )
+
+
+def build_change_job_stage() -> ChangeJobStage:
+    return ChangeJobStage(JobRepositorySQLAlchemy(get_session_factory()))
 
 
 def build_top_matches() -> ListTopMatches:

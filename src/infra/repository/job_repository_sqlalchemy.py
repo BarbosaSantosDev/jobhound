@@ -1,9 +1,9 @@
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from src.app.repository import JobRepository
 from src.domain.entity import Job, MatchResult
-from src.domain.value_object import MatchScore
+from src.domain.value_object import JobStage, MatchScore
 from src.infra.model import JobModel, MatchModel
 
 
@@ -42,9 +42,17 @@ class JobRepositorySQLAlchemy(JobRepository):
                     reasons=result.reasons,
                     red_flags=result.red_flags,
                     evaluated_at=result.evaluated_at,
+                    stage=result.stage.value,
                 )
             )
             await session.commit()
+
+    async def set_stage(self, job_id: str, stage: JobStage) -> bool:
+        async with self._session_factory() as session:
+            stmt = update(MatchModel).where(MatchModel.job_id == job_id).values(stage=stage.value)
+            result = await session.execute(stmt)
+            await session.commit()
+            return result.rowcount > 0
 
     async def top_matches(self, limit: int = 10) -> list[tuple[Job, MatchResult]]:
         async with self._session_factory() as session:
@@ -73,6 +81,7 @@ class JobRepositorySQLAlchemy(JobRepository):
                         reasons=list(mm.reasons),
                         red_flags=list(mm.red_flags),
                         evaluated_at=mm.evaluated_at,
+                        stage=JobStage(mm.stage),
                     ),
                 )
                 for jm, mm in rows

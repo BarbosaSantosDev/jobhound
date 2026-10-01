@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from src.app.service import PipelineStatus
 from src.domain.entity import Job, Profile
 from src.domain.entity.match_result import MatchResult
+from src.domain.value_object import JobStage
 
 
 class JobSchema(BaseModel):
@@ -25,6 +26,7 @@ class MatchResultSchema(BaseModel):
     is_worth_applying: bool
     needs_manual_review: bool
     evaluated_at: datetime
+    stage: JobStage
 
 
 class MatchSchema(BaseModel):
@@ -50,8 +52,17 @@ class MatchSchema(BaseModel):
                 is_worth_applying=result.is_worth_applying,
                 needs_manual_review=result.needs_manual_review,
                 evaluated_at=result.evaluated_at,
+                stage=result.stage,
             ),
         )
+
+
+class JobStageSchema(BaseModel):
+    stage: JobStage
+
+
+class JobStageResponse(JobStageSchema):
+    job_id: str
 
 
 class StatsSchema(BaseModel):

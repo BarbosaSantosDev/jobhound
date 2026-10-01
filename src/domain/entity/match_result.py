@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 
 from pydantic import BaseModel, Field
 
-from src.domain.value_object import MatchScore
+from src.domain.value_object import JobStage, MatchScore
 
 BLOCKING_FLAGS = {"seniority_mismatch", "stack_incompatible"}
 
@@ -14,6 +14,7 @@ class MatchResult(BaseModel):
     reasons: list[str]
     red_flags: list[str] = Field(default_factory=list)
     evaluated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    stage: JobStage = JobStage.NEW
 
     @property
     def is_worth_applying(self) -> bool:

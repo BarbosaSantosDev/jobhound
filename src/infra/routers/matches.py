@@ -3,8 +3,9 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from src.app.query import ListTopMatches
-from src.infra.routers.dependencies import get_top_matches
-from src.infra.routers.schemas import MatchSchema
+from src.app.usecase import ChangeJobStage
+from src.infra.routers.dependencies import get_change_job_stage, get_top_matches
+from src.infra.routers.schemas import JobStageResponse, JobStageSchema, MatchSchema
 
 router = APIRouter(prefix="/api/v1", tags=["matches"])
 
@@ -34,3 +35,12 @@ async def get_job(
         if job.id == job_id:
             return MatchSchema.from_domain(job, result)
     raise HTTPException(status_code=404, detail="Vaga não encontrada")
+
+@router.patch("/matches/{job_id}/stage", response_model=JobStageResponse)
+async def change_stage(
+    job_id: str,
+    body: JobStageSchema,
+    use_case: ChangeJobStage = Depends(get_change_job_stage),
+) -> JobStageResponse:
+    stage = await use_case.execute(job_id, body.stage)
+    return JobStageResponse(job_id=job_id, stage=stage)
