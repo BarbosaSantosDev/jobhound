@@ -5,10 +5,12 @@ import asyncio
 
 import httpx
 
-from src.app.repository import JobRepository, ProfileRepository
-from src.domain.entity import Job, MatchResult
+from src.app.dto.pipeline_report import PipelineRun
+from src.app.repository import JobRepository, PipelineRunRepository, ProfileRepository
+from src.domain.entity import Job, JobFacts, MatchResult
 from src.domain.entity.profile import Profile
-from src.domain.value_object import JobStage, MatchScore
+from src.domain.service import FactExtractor, JobSource, Notifier
+from src.domain.value_object import JobStage, MatchScore, Seniority, WorkMode
 
 
 class InMemoryProfileRepository(ProfileRepository):
@@ -75,6 +77,56 @@ class InMemoryJobRepository(JobRepository):
                 self.matches[i] = m.model_copy(update={"stage": stage})
                 found = True
         return found
+
+
+class InMemoryPipelineRunRepository(PipelineRunRepository):
+    def __init__(self) -> None:
+        self.runs: list[PipelineRun] = []
+
+    async def save(self, run: PipelineRun) -> PipelineRun:
+        run = run.model_copy(update={"id": len(self.runs) + 1})
+        self.runs.append(run)
+        return run
+
+    async def last(self, profile_id: int | None = None) -> PipelineRun | None:
+        runs = [r for r in self.runs if profile_id is None or r.profile_id == profile_id]
+        return max(runs, key=lambda r: r.finished_at, default=None)
+
+
+class FakeSource(JobSource):
+    """Fonte com vagas fixas; com `error`, falha como uma fonte fora do ar."""
+
+    def __init__(self, name: str, jobs: list[Job] | None = None, error: str | None = None):
+        self._name = name
+        self._jobs = jobs or []
+        self._error = error
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    async def fetch(self) -> list[Job]:
+        if self._error:
+            raise RuntimeError(self._error)
+        return self._jobs
+
+
+class ConstantExtractor(FactExtractor):
+    """Extrai sempre os mesmos fatos: vaga pleno, remota, com Python."""
+
+    async def extract(self, job: Job) -> JobFacts:
+        return JobFacts(mentioned_stack=["Python"], seniority=Seniority.PLENO, work_mode=WorkMode.REMOTE)
+
+
+class RecordingNotifier(Notifier):
+    def __init__(self, error: str | None = None) -> None:
+        self.sent: list = []
+        self._error = error
+
+    async def send_matches(self, matches) -> None:
+        if self._error:
+            raise RuntimeError(self._error)
+        self.sent.extend(matches)
 
 
 def make_job(job_id: str, title: str = "Vaga de teste", **extra) -> Job:

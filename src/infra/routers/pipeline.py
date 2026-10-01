@@ -50,7 +50,8 @@ async def run_pipeline(
 
 @router.get("/pipeline/status", response_model=PipelineStatusSchema)
 async def get_pipeline_status(
+    profile: str | None = Query(default=None, description="último faro deste perfil"),
     use_case: GetPipelineStatus = Depends(get_pipeline_status_usecase),
 ) -> PipelineStatusSchema:
-    status = await use_case.execute()
+    status = await use_case.execute(profile)
     return PipelineStatusSchema.from_domain(status)

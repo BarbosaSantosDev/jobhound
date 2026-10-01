@@ -3,6 +3,7 @@ import asyncio
 from behave import given, then, when
 
 from features.fakes import (
+    FakeSource,
     InMemoryJobRepository,
     InMemoryProfileRepository,
     call_api,
@@ -11,9 +12,7 @@ from features.fakes import (
 )
 from src.app.query import ListProfiles, ListTopMatches
 from src.app.usecase import ChangeJobStage, FetchNewJobs, GetProfile
-from src.domain.entity import Job
 from src.domain.entity.profile import Profile
-from src.domain.service import JobSource
 from src.infra.routers.dependencies import (
     get_change_job_stage,
     get_list_profiles,
@@ -21,18 +20,6 @@ from src.infra.routers.dependencies import (
     get_top_matches,
 )
 from src.server import create_app
-
-
-class FakeSource(JobSource):
-    def __init__(self, jobs: list[Job]):
-        self._jobs = jobs
-
-    @property
-    def name(self) -> str:
-        return "fake"
-
-    async def fetch(self) -> list[Job]:
-        return self._jobs
 
 
 @given("a API do jobhound com repositórios de vagas e perfis em memória")
@@ -111,13 +98,13 @@ def step_stage_for(context, slug, job_id, stage):
 @given('uma fonte que traz as vagas "{job_ids}"')
 def step_source(context, job_ids):
     # mesma vaga = mesmo título/empresa/local (fingerprint), como viria da fonte
-    context.source = FakeSource([make_job(j.strip(), title=f"Vaga {j.strip()}") for j in job_ids.split(",")])
+    context.source = FakeSource("fake", [make_job(j.strip(), title=f"Vaga {j.strip()}") for j in job_ids.split(",")])
 
 
 @when('eu busco vagas novas para o perfil "{slug}"')
 def step_fetch(context, slug):
     use_case = FetchNewJobs([context.source], context.job_repo, profile_id=_profile_id(context, slug))
-    context.offered = asyncio.run(use_case.execute())
+    context.offered = asyncio.run(use_case.execute()).jobs
     # o pipeline avaliaria cada vaga oferecida; simula isso para o próximo passo
     for job in context.offered:
         asyncio.run(context.job_repo.save_match(make_match(job.id, 50, profile_id=_profile_id(context, slug))))

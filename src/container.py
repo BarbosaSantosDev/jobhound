@@ -5,7 +5,7 @@ from functools import lru_cache
 
 from dotenv import load_dotenv
 
-from src.app.query import ListProfiles, ListTopMatches
+from src.app.query import GetLastRun, ListProfiles, ListTopMatches
 from src.app.repository import ProfileRepository
 from src.app.service import PipelineStatusTracker
 from src.app.usecase import (
@@ -16,7 +16,7 @@ from src.app.usecase import (
     RegisterProfile,
     UpdateProfile,
 )
-from src.app.workflow import PipelineWorkflow
+from src.app.workflow import PipelineWorkflow, RunTarget
 from src.domain.entity.profile import Profile
 from src.domain.service import FactExtractor, JobSource, ScoreJob
 from src.domain.value_object import SourceName
@@ -24,7 +24,11 @@ from src.error import NoProfileError, ProfileNotFoundError
 from src.infra.database import get_session_factory
 from src.infra.gateway import GupySource, NerdinSource, RemoteOKSource, TelegramNotifier
 from src.infra.llm import LangChainExtractor
-from src.infra.repository import JobRepositorySQLAlchemy, ProfileRepositorySQLAlchemy
+from src.infra.repository import (
+    JobRepositorySQLAlchemy,
+    PipelineRunRepositorySQLAlchemy,
+    ProfileRepositorySQLAlchemy,
+)
 
 load_dotenv()
 
@@ -106,7 +110,13 @@ async def build_pipeline(profile_slug: str | None = None) -> PipelineWorkflow:
         job_repo=job_repo,
         notifier=TelegramNotifier(telegram_bot_token, telegram_chat_id),
         status=status,
+        run_repo=PipelineRunRepositorySQLAlchemy(get_session_factory()),
+        target=RunTarget(profile_id=profile.id, profile_slug=profile.slug),
     )
+
+
+def build_get_last_run() -> GetLastRun:
+    return GetLastRun(PipelineRunRepositorySQLAlchemy(get_session_factory()), build_profile_repo())
 
 
 def build_change_job_stage() -> ChangeJobStage:

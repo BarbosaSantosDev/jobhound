@@ -3,6 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
+from src.app.dto.pipeline_report import PipelineRun
 from src.app.service import PipelineStatus
 from src.domain.entity import Job, Profile
 from src.domain.entity.match_result import MatchResult
@@ -87,6 +88,42 @@ class PipelineRunResponse(BaseModel):
     detail: str
 
 
+class SourceReportSchema(BaseModel):
+    name: str
+    ok: bool
+    fetched: int
+    error: str | None = None
+
+
+class PipelineRunSchema(BaseModel):
+    profile: str | None = None
+    started_at: datetime
+    finished_at: datetime
+    status: Literal["ok", "failed"]
+    error: str | None = None
+    fetched: int  # vagas novas para o perfil (entraram em avaliação)
+    matched: int
+    manual_review: int
+    errors: int
+    sources: list[SourceReportSchema]
+
+    @classmethod
+    def from_domain(cls, run: PipelineRun) -> "PipelineRunSchema":
+        r = run.report
+        return cls(
+            profile=run.profile_slug,
+            started_at=run.started_at,
+            finished_at=run.finished_at,
+            status=run.status,
+            error=run.error,
+            fetched=r.fetched,
+            matched=r.matched,
+            manual_review=r.manual_review,
+            errors=r.errors,
+            sources=[SourceReportSchema(**s.model_dump()) for s in r.sources],
+        )
+
+
 class PipelineStatusSchema(BaseModel):
     running: bool
     profile: str | None = None
@@ -94,6 +131,7 @@ class PipelineStatusSchema(BaseModel):
     started_at: datetime | None = None
     finished_at: datetime | None = None
     last_error: str | None = None
+    last_run: PipelineRunSchema | None = None
 
     @classmethod
     def from_domain(cls, status: PipelineStatus) -> "PipelineStatusSchema":
@@ -104,6 +142,7 @@ class PipelineStatusSchema(BaseModel):
             started_at=status.started_at,
             finished_at=status.finished_at,
             last_error=status.last_error,
+            last_run=PipelineRunSchema.from_domain(status.last_run) if status.last_run else None,
         )
 
 

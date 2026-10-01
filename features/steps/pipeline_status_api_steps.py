@@ -3,9 +3,15 @@ import asyncio
 import httpx
 from behave import given, then, when
 
+from features.fakes import InMemoryPipelineRunRepository, InMemoryProfileRepository
 from src.app.dto.pipeline_report import PipelineReport
+from src.app.query import GetLastRun
 from src.app.service.pipeline_status import PipelineStatusTracker
-from src.infra.routers.dependencies import get_pipeline, get_pipeline_status_tracker
+from src.infra.routers.dependencies import (
+    get_last_run,
+    get_pipeline,
+    get_pipeline_status_tracker,
+)
 from src.server import create_app
 
 
@@ -31,6 +37,8 @@ def step_setup_app(context):
     context.fake_pipeline = _PausedPipeline()
     context.app.dependency_overrides[get_pipeline] = lambda: context.fake_pipeline
     context.app.dependency_overrides[get_pipeline_status_tracker] = lambda: context.tracker
+    runs, profiles = InMemoryPipelineRunRepository(), InMemoryProfileRepository()
+    context.app.dependency_overrides[get_last_run] = lambda: GetLastRun(runs, profiles)
 
 
 async def _get_status(context):

@@ -3,6 +3,8 @@ from datetime import UTC, datetime
 
 from pydantic import BaseModel
 
+from src.app.dto.pipeline_report import PipelineRun
+
 
 class PipelineStatus(BaseModel):
     """Snapshot somente-leitura do estado do pipeline — o que a API expõe."""
@@ -13,6 +15,8 @@ class PipelineStatus(BaseModel):
     started_at: datetime | None = None
     finished_at: datetime | None = None
     last_error: str | None = None
+    # último faro registrado no banco (sobrevive a restart; o resto é em memória)
+    last_run: PipelineRun | None = None
 
 
 class PipelineStatusTracker:
