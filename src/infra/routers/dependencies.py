@@ -2,12 +2,13 @@ from functools import lru_cache
 
 from fastapi import Depends
 
-from src.app.query import GetPipelineStatus, ListTopMatches
+from src.app.query import GetPipelineStatus, ListProfiles, ListTopMatches
 from src.app.service import PipelineStatusTracker
 from src.app.usecase import GetProfile, RegisterProfile, UpdateProfile
 from src.app.workflow import PipelineWorkflow
 from src.container import (
     build_get_profile,
+    build_list_profiles,
     build_pipeline,
     build_pipeline_status_tracker,
     build_register_profile,
@@ -46,6 +47,11 @@ def get_top_matches() -> ListTopMatches:
 @lru_cache
 def get_profile_usecase() -> GetProfile:
     return build_get_profile()
+
+
+@lru_cache
+def get_list_profiles() -> ListProfiles:
+    return build_list_profiles()
 
 
 @lru_cache

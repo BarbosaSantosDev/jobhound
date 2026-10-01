@@ -5,7 +5,7 @@ from functools import lru_cache
 
 from dotenv import load_dotenv
 
-from src.app.query import ListTopMatches
+from src.app.query import ListProfiles, ListTopMatches
 from src.app.repository import ProfileRepository
 from src.app.service import PipelineStatusTracker
 from src.app.usecase import (
@@ -44,6 +44,10 @@ async def load_profile() -> Profile | None:
 
 def build_get_profile() -> GetProfile:
     return GetProfile(build_profile_repo())
+
+
+def build_list_profiles() -> ListProfiles:
+    return ListProfiles(build_profile_repo())
 
 
 def build_update_profile() -> UpdateProfile:

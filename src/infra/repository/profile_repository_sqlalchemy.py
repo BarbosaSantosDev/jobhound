@@ -41,6 +41,11 @@ class ProfileRepositorySQLAlchemy(ProfileRepository):
             model = (await session.execute(stmt.limit(1))).scalar_one_or_none()
             return _to_entity(model) if model is not None else None
 
+    async def list_all(self) -> list[Profile]:
+        async with self._session_factory() as session:
+            stmt = select(ProfileModel).order_by(ProfileModel.updated_at.desc())
+            return [_to_entity(m) for m in (await session.execute(stmt)).scalars()]
+
     async def check_if_exists(self, slug: str) -> bool:
         async with self._session_factory() as session:
             stmt = select(ProfileModel.id).where(ProfileModel.slug == slug)
