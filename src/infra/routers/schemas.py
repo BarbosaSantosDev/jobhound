@@ -17,6 +17,7 @@ class JobSchema(BaseModel):
     source: str
     url: str
     fetched_at: datetime
+    summary: str | None = None
 
 
 class ReasonSchema(BaseModel):
@@ -49,6 +50,7 @@ class MatchSchema(BaseModel):
                 source=job.source,
                 url=job.url,
                 fetched_at=job.fetched_at,
+                summary=job.excerpt(),
             ),
             result=MatchResultSchema(
                 score=result.score.value,

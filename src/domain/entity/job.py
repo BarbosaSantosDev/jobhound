@@ -1,4 +1,5 @@
 import hashlib
+import html
 import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -6,6 +7,12 @@ from datetime import UTC, datetime
 
 def _normalize(text: str) -> str:
     return re.sub(r"\s+", " ", text.strip().lower())
+
+
+def _plain_text(raw: str) -> str:
+    """Descrições chegam com HTML das fontes: vira texto corrido de uma linha."""
+    without_tags = re.sub(r"<[^>]+>", " ", raw)
+    return re.sub(r"\s+", " ", html.unescape(without_tags)).strip()
 
 
 @dataclass
@@ -23,6 +30,17 @@ class Job:
     def fingerprint(self) -> str:
         raw = f"{_normalize(self.title)}|{_normalize(self.company)}|{_normalize(self.location)}"
         return hashlib.sha256(raw.encode()).hexdigest()
+
+    def excerpt(self, max_chars: int = 600) -> str | None:
+        """Trecho legível da descrição para o dashboard. Corta na última palavra
+        inteira que cabe e marca o corte com reticências. None se não houver texto."""
+        text = _plain_text(self.description)
+        if not text:
+            return None
+        if len(text) <= max_chars:
+            return text
+        cut = text[:max_chars].rsplit(" ", 1)[0].rstrip(" ,.;:-")
+        return f"{cut}…"
 
     def to_evaluation_text(self) -> str:
         return (
