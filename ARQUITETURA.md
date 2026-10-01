@@ -26,25 +26,30 @@ pelo navegador.
 ## O fluxo ponta a ponta
 
 1. **Perfil** — você cadastra um perfil (nome, senioridade, stack principal/secundária,
-   localizações preferidas, aceita remoto, resumo). Os termos de busca de cada fonte
-   (Gupy, Nerdin, RemoteOK) são **derivados automaticamente** da sua stack — você não
-   escolhe isso diretamente.
+   localizações preferidas, aceita remoto, resumo, fontes ligadas). Os termos de busca
+   de cada fonte (Gupy, Nerdin, RemoteOK) são **derivados automaticamente** da sua
+   stack. Você escolhe só quais fontes ficam ligadas; entra no faro a fonte ligada que
+   tem termo de busca (`Profile.active_sources()`). Dá pra ter vários perfis.
 2. **Buscar vagas** (`FetchNewJobs`) — cada fonte é consultada com os termos derivados.
-   Vagas repetidas (mesmo título+empresa+local, via hash) são descartadas, e vagas já
-   salvas no banco não entram de novo.
+   Vagas repetidas (mesmo título+empresa+local, via hash) são gravadas uma vez só. Uma
+   vaga já gravada volta para avaliação se o perfil do faro ainda não a avaliou — cada
+   perfil tem as próprias avaliações e etapas (`matches.profile_id`).
 3. **Extrair fatos** (`EvaluateJobMatch` → LLM via Ollama) — para cada vaga nova, o LLM
    lê a descrição e extrai só fatos objetivos: stack mencionada, senioridade, modo de
    trabalho, cidade, faixa salarial.
 4. **Pontuar** (`ScoreJob`, domínio puro, sem LLM) — compara os fatos extraídos com o
    seu perfil e calcula um score 0-100 com motivos explicados: stack bate (peso 50),
-   senioridade bate (peso 30), localização/remoto bate (peso 20).
+   senioridade bate (peso 30), localização/remoto bate (peso 20). Cada motivo diz para
+   que lado pesou (`pro`, `con` ou `info`).
 5. **Salvar + notificar** — o resultado vai pro Postgres; se a vaga for boa
    (`is_worth_applying`) ou merecer revisão manual (`needs_manual_review`), dispara um
    Telegram (se configurado). Esse passo, mais `jobhound top` na CLI, já é suficiente
-   pra usar o projeto só com este repositório.
-6. **Frontend** (opcional, repositório separado) — o dashboard busca `/api/v1/matches`
-   e `/api/v1/stats` a cada poucos segundos (polling) e mostra a lista sem precisar
-   recarregar a página.
+   pra usar o projeto só com este repositório. Cada execução fica registrada em
+   `pipeline_runs`, com o resultado de cada fonte (inclusive as que falharam).
+6. **Frontend** (opcional, repositório separado) — o dashboard busca `/api/v1/matches`,
+   `/api/v1/stats` e `/api/v1/pipeline/status` a cada poucos segundos (polling) e mostra
+   a lista sem precisar recarregar a página. Lá você também faz a triagem de cada vaga
+   (salvar, candidatei, descartar).
 
 ```
 perfil (você)
@@ -57,11 +62,30 @@ perfil (você)
 
 ## Como disparar o pipeline
 
-- `POST /api/v1/pipeline/run` — usado pelo botão "rodar pipeline" do frontend. Roda em
-  background, uma vez; devolve 409 se já tiver um rodando.
-- `jobhound run` — mesma coisa, via CLI.
+- `POST /api/v1/pipeline/run?profile=<slug>` — usado pelo botão "Farejar agora" do
+  frontend. Roda em background, uma vez; devolve 409 se já tiver um rodando. Sem
+  `profile`, usa o perfil editado por último.
+- `jobhound run --profile <slug>` — mesma coisa, via CLI.
 - `python -m src.scheduler` — roda o pipeline a cada 3h. Não faz parte do
   `docker-compose` hoje; suba manualmente se quiser recorrência automática.
+
+## Rotas da API
+
+Todas sob `/api/v1`. Onde aparece `?profile=<slug>`, o parâmetro é opcional: sem ele,
+vale tudo (ou o perfil editado por último, no caso do pipeline).
+
+| Rota | O que faz |
+|---|---|
+| `GET /profiles` | lista os perfis (atualizado mais recentemente primeiro) |
+| `POST /profiles` · `GET`/`PUT /profiles/{slug}` | registra, lê e atualiza um perfil (inclui `enabled_sources`; devolve também `active_sources`) |
+| `GET /matches?profile=` | vagas avaliadas, com score, motivos `{kind, text}`, `stage`, `work_mode` e `summary` |
+| `PATCH /matches/{job_id}/stage?profile=` | move a vaga para `new`, `saved`, `applied` ou `discarded` |
+| `GET /stats?profile=` | contagens + `errors` do último faro |
+| `POST /pipeline/run?profile=` | dispara um faro em background |
+| `GET /pipeline/status?profile=` | estado ao vivo + `last_run` (último faro registrado, com status por fonte) |
+
+Avaliações feitas antes de existir `profile_id` (legadas) aparecem para todos os perfis:
+não dá para saber com qual perfil cada uma foi feita.
 
 ## Camadas (Clean Architecture + DDD)
 

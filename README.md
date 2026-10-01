@@ -106,8 +106,8 @@ Sem isso, tudo continua funcionando normalmente — só mais lento na etapa de L
 ## Uso
 
 ```bash
-jobhound run    # roda o pipeline uma vez
-jobhound top    # lista os melhores matches
+jobhound run [--profile <slug>]   # roda o pipeline uma vez (padrão: perfil editado por último)
+jobhound top [--profile <slug>]   # lista os melhores matches
 python -m src.scheduler   # roda a cada 3h
 ```
 
