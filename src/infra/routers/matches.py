@@ -14,9 +14,10 @@ router = APIRouter(prefix="/api/v1", tags=["matches"])
 async def list_matches(
     filter: Literal["all", "apply", "review"] = "all",
     limit: int = Query(default=50, le=200),
+    profile: str | None = Query(default=None, description="slug do perfil; sem ele, todas"),
     use_case: ListTopMatches = Depends(get_top_matches),
 ) -> list[MatchSchema]:
-    pairs = await use_case.execute(limit)
+    pairs = await use_case.execute(limit, profile)
     schemas = [MatchSchema.from_domain(job, result) for job, result in pairs]
     if filter == "apply":
         schemas = [m for m in schemas if m.result.is_worth_applying]
@@ -40,7 +41,8 @@ async def get_job(
 async def change_stage(
     job_id: str,
     body: JobStageSchema,
+    profile: str | None = Query(default=None, description="slug do perfil dono da avaliação"),
     use_case: ChangeJobStage = Depends(get_change_job_stage),
 ) -> JobStageResponse:
-    stage = await use_case.execute(job_id, body.stage)
+    stage = await use_case.execute(job_id, body.stage, profile)
     return JobStageResponse(job_id=job_id, stage=stage)

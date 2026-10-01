@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from fastapi import Depends
+from fastapi import Depends, Query
 
 from src.app.query import GetPipelineStatus, ListProfiles, ListTopMatches
 from src.app.service import PipelineStatusTracker
@@ -18,10 +18,12 @@ from src.container import (
 )
 
 
-async def get_pipeline() -> PipelineWorkflow:
+async def get_pipeline(
+    profile: str | None = Query(default=None, description="slug do perfil a farejar"),
+) -> PipelineWorkflow:
     # Sem lru_cache de propósito: monta o grafo fresco a cada run,
     # garantindo que edições no perfil valem no próximo pipeline.
-    return await build_pipeline()
+    return await build_pipeline(profile)
 
 
 def get_pipeline_status_tracker() -> PipelineStatusTracker:

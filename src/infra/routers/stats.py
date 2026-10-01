@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from src.app.query import ListTopMatches
 from src.infra.routers.dependencies import get_top_matches
@@ -9,9 +9,10 @@ router = APIRouter(prefix="/api/v1", tags=["stats"])
 
 @router.get("/stats", response_model=StatsSchema)
 async def get_stats(
+    profile: str | None = Query(default=None, description="slug do perfil; sem ele, todas"),
     use_case: ListTopMatches = Depends(get_top_matches),
 ) -> StatsSchema:
-    pairs = await use_case.execute(limit=200)
+    pairs = await use_case.execute(limit=200, profile_slug=profile)
     last = max((r.evaluated_at for _, r in pairs), default=None)
     return StatsSchema(
         fetched=len(pairs),

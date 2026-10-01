@@ -10,6 +10,8 @@ BLOCKING_FLAGS = {"seniority_mismatch", "stack_incompatible"}
 
 class MatchResult(BaseModel):
     job_id: str
+    # perfil contra o qual a vaga foi pontuada; None em avaliações legadas
+    profile_id: int | None = None
     score: MatchScore
     reasons: list[Reason]
     red_flags: list[str] = Field(default_factory=list)

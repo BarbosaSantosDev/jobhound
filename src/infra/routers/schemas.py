@@ -89,6 +89,7 @@ class PipelineRunResponse(BaseModel):
 
 class PipelineStatusSchema(BaseModel):
     running: bool
+    profile: str | None = None
     stage: str | None = None
     started_at: datetime | None = None
     finished_at: datetime | None = None
@@ -98,6 +99,7 @@ class PipelineStatusSchema(BaseModel):
     def from_domain(cls, status: PipelineStatus) -> "PipelineStatusSchema":
         return cls(
             running=status.running,
+            profile=status.profile,
             stage=status.stage,
             started_at=status.started_at,
             finished_at=status.finished_at,

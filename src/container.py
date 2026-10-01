@@ -20,6 +20,7 @@ from src.app.workflow import PipelineWorkflow
 from src.domain.entity.profile import Profile
 from src.domain.service import FactExtractor, JobSource, ScoreJob
 from src.domain.value_object import SourceName
+from src.error import NoProfileError, ProfileNotFoundError
 from src.infra.database import get_session_factory
 from src.infra.gateway import GupySource, NerdinSource, RemoteOKSource, TelegramNotifier
 from src.infra.llm import LangChainExtractor
@@ -38,10 +39,6 @@ anthropic_model = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6")
 
 def build_profile_repo() -> ProfileRepository:
     return ProfileRepositorySQLAlchemy(get_session_factory())
-
-
-async def load_profile() -> Profile | None:
-    return await build_profile_repo().load()
 
 
 def build_get_profile() -> GetProfile:
@@ -92,19 +89,19 @@ def build_pipeline_status_tracker() -> PipelineStatusTracker:
     return PipelineStatusTracker()
 
 
-async def build_pipeline() -> PipelineWorkflow:
+async def build_pipeline(profile_slug: str | None = None) -> PipelineWorkflow:
+    """Sem slug, usa o perfil atualizado mais recentemente (comportamento anterior)."""
     job_repo = JobRepositorySQLAlchemy(get_session_factory())
 
-    profile = await load_profile()
+    profile = await build_profile_repo().load(profile_slug)
     if profile is None:
-        raise RuntimeError(
-            "Nenhum perfil cadastrado ainda — registre um via POST /api/v1/profiles "
-            "antes de rodar o pipeline."
-        )
+        if profile_slug is not None:
+            raise ProfileNotFoundError(profile_slug)
+        raise NoProfileError()
 
     status = build_pipeline_status_tracker()
     return PipelineWorkflow(
-        fetch_jobs=FetchNewJobs(build_sources(profile), job_repo),
+        fetch_jobs=FetchNewJobs(build_sources(profile), job_repo, profile_id=profile.id),
         evaluate=EvaluateJobMatch(build_extractor(), ScoreJob(), profile, status=status),
         job_repo=job_repo,
         notifier=TelegramNotifier(telegram_bot_token, telegram_chat_id),
@@ -113,8 +110,8 @@ async def build_pipeline() -> PipelineWorkflow:
 
 
 def build_change_job_stage() -> ChangeJobStage:
-    return ChangeJobStage(JobRepositorySQLAlchemy(get_session_factory()))
+    return ChangeJobStage(JobRepositorySQLAlchemy(get_session_factory()), build_profile_repo())
 
 
 def build_top_matches() -> ListTopMatches:
-    return ListTopMatches(JobRepositorySQLAlchemy(get_session_factory()))
+    return ListTopMatches(JobRepositorySQLAlchemy(get_session_factory()), build_profile_repo())

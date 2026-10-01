@@ -38,27 +38,40 @@ class InMemoryProfileRepository(ProfileRepository):
 
 
 class InMemoryJobRepository(JobRepository):
+    """Mesma regra do repositório real: avaliações legadas (profile_id None)
+    valem para qualquer perfil; profile_id None na consulta = sem filtro."""
+
     def __init__(self) -> None:
         self.jobs: dict[str, Job] = {}
         self.matches: list[MatchResult] = []
 
-    async def exists(self, fingerprint: str) -> bool:
-        return any(j.fingerprint == fingerprint for j in self.jobs.values())
+    @staticmethod
+    def _visible(m: MatchResult, profile_id: int | None) -> bool:
+        return profile_id is None or m.profile_id in (profile_id, None)
+
+    async def find_by_fingerprint(self, fingerprint: str) -> Job | None:
+        return next((j for j in self.jobs.values() if j.fingerprint == fingerprint), None)
 
     async def save(self, job: Job) -> None:
         self.jobs[job.id] = job
 
+    async def is_evaluated(self, job_id: str, profile_id: int | None) -> bool:
+        return any(m.job_id == job_id and self._visible(m, profile_id) for m in self.matches)
+
     async def save_match(self, result: MatchResult) -> None:
         self.matches.append(result)
 
-    async def top_matches(self, limit: int = 10) -> list[tuple[Job, MatchResult]]:
-        ranked = sorted(self.matches, key=lambda m: m.score.value, reverse=True)[:limit]
+    async def top_matches(
+        self, limit: int = 10, profile_id: int | None = None
+    ) -> list[tuple[Job, MatchResult]]:
+        visible = [m for m in self.matches if self._visible(m, profile_id)]
+        ranked = sorted(visible, key=lambda m: m.score.value, reverse=True)[:limit]
         return [(self.jobs[m.job_id], m) for m in ranked]
 
-    async def set_stage(self, job_id: str, stage: JobStage) -> bool:
+    async def set_stage(self, job_id: str, stage: JobStage, profile_id: int | None = None) -> bool:
         found = False
         for i, m in enumerate(self.matches):
-            if m.job_id == job_id:
+            if m.job_id == job_id and self._visible(m, profile_id):
                 self.matches[i] = m.model_copy(update={"stage": stage})
                 found = True
         return found

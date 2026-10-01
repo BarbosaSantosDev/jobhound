@@ -40,6 +40,7 @@ class ScoreJob:
         self._location(card, input)
         return MatchResult(
             job_id=input.job_id,
+            profile_id=input.profile.id,
             score=MatchScore(value=min(card.score, 100)),
             reasons=card.reasons,
             red_flags=card.red_flags,

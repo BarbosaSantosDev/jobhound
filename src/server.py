@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 from src.error import (
     JobHoundError,
     JobNotFoundError,
+    NoProfileError,
     ProfileAlreadyExistsError,
     ProfileNotFoundError,
 )
@@ -16,6 +17,7 @@ _STATUS_BY_ERROR = {
     ProfileAlreadyExistsError: 409,
     ProfileNotFoundError: 404,
     JobNotFoundError: 404,
+    NoProfileError: 409,
 }
 
 _DEFAULT_CORS_ORIGINS = "http://localhost:3000,http://localhost:5173"

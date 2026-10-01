@@ -8,6 +8,7 @@ class PipelineStatus(BaseModel):
     """Snapshot somente-leitura do estado do pipeline — o que a API expõe."""
 
     running: bool
+    profile: str | None = None  # slug do perfil do faro atual/último (None = padrão)
     stage: str | None = None
     started_at: datetime | None = None
     finished_at: datetime | None = None
@@ -27,18 +28,20 @@ class PipelineStatusTracker:
     def __init__(self) -> None:
         self._lock = asyncio.Lock()
         self._running = False
+        self._profile: str | None = None
         self._stage: str | None = None
         self._started_at: datetime | None = None
         self._finished_at: datetime | None = None
         self._last_error: str | None = None
 
-    async def try_start(self) -> bool:
+    async def try_start(self, profile: str | None = None) -> bool:
         """Marca como "rodando" se estava livre. Retorna False se já havia
         uma execução em andamento — é o sinal que vira 409 no router."""
         async with self._lock:
             if self._running:
                 return False
             self._running = True
+            self._profile = profile
             self._stage = None
             self._started_at = datetime.now(UTC)
             self._finished_at = None
@@ -61,6 +64,7 @@ class PipelineStatusTracker:
         async with self._lock:
             return PipelineStatus(
                 running=self._running,
+                profile=self._profile,
                 stage=self._stage,
                 started_at=self._started_at,
                 finished_at=self._finished_at,

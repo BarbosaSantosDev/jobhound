@@ -2,7 +2,13 @@ import asyncio
 
 from behave import given, then, when
 
-from features.fakes import InMemoryJobRepository, call_api, make_job, make_match
+from features.fakes import (
+    InMemoryJobRepository,
+    InMemoryProfileRepository,
+    call_api,
+    make_job,
+    make_match,
+)
 from src.app.query import ListTopMatches
 from src.app.usecase import ChangeJobStage
 from src.infra.routers.dependencies import get_change_job_stage, get_top_matches
@@ -13,9 +19,11 @@ from src.server import create_app
 def step_api_with_jobs(context):
     context.app = create_app()
     context.job_repo = InMemoryJobRepository()
-    repo = context.job_repo
-    context.app.dependency_overrides[get_top_matches] = lambda: ListTopMatches(repo)
-    context.app.dependency_overrides[get_change_job_stage] = lambda: ChangeJobStage(repo)
+    context.profile_repo = InMemoryProfileRepository()
+    jobs, profiles = context.job_repo, context.profile_repo
+    overrides = context.app.dependency_overrides
+    overrides[get_top_matches] = lambda: ListTopMatches(jobs, profiles)
+    overrides[get_change_job_stage] = lambda: ChangeJobStage(jobs, profiles)
 
 
 @given('a vaga "{job_id}" avaliada com score {score:d}')

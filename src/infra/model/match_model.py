@@ -12,6 +12,9 @@ class MatchModel(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     job_id: Mapped[str] = mapped_column(ForeignKey("jobs.id"), index=True)
+    profile_id: Mapped[int | None] = mapped_column(
+        ForeignKey("profiles.id", ondelete="CASCADE"), nullable=True, index=True
+    )
     score: Mapped[int] = mapped_column(Integer, index=True)
     reasons: Mapped[list[dict]] = mapped_column(JSONB)  # [{kind, text}]
     red_flags: Mapped[list[str]] = mapped_column(ARRAY(String))
