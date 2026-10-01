@@ -51,7 +51,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://agentjob:agentjob@db:5432/agentjob
       OLLAMA_BASE_URL: http://ollama:11434
     ports:
-      - "8000:8000"
+      - "${APP_HOST_PORT:-8000}:8000"
     depends_on:
       db:
         condition: service_healthy
