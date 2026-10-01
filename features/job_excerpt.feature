@@ -22,3 +22,8 @@ Feature: Resumo da vaga para o dashboard
     Given uma vaga com a descrição "<p>  </p>"
     When eu gero o resumo da vaga
     Then não deve haver resumo
+
+  Scenario: Remove caracteres invisíveis
+    Given uma vaga com a descrição "Vem ser Ituber&#65279; e vem fazer Itaú"
+    When eu gero o resumo da vaga
+    Then o resumo deve ser "Vem ser Ituber e vem fazer Itaú"

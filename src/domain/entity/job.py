@@ -12,7 +12,8 @@ def _normalize(text: str) -> str:
 def _plain_text(raw: str) -> str:
     """Descrições chegam com HTML das fontes: vira texto corrido de uma linha."""
     without_tags = re.sub(r"<[^>]+>", " ", raw)
-    return re.sub(r"\s+", " ", html.unescape(without_tags)).strip()
+    visible = re.sub(r"[\u200b-\u200d\ufeff]", "", html.unescape(without_tags))
+    return re.sub(r"\s+", " ", visible).strip()
 
 
 @dataclass
