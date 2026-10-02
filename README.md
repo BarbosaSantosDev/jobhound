@@ -1,4 +1,12 @@
-# jobhound
+<h1 align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="docs/assets/logo-light.svg">
+    <img alt="jobhound" src="docs/assets/logo-light.svg" width="420">
+  </picture>
+</h1>
+
+<p align="center"><strong>Faro para a vaga certa.</strong></p>
 
 jobhound é um assistente pessoal de busca de vagas: procura em múltiplas fontes,
 filtra o ruído e avisa só das vagas que combinam com o seu perfil — pra quem não
@@ -16,7 +24,7 @@ Clean Architecture + DDD (`src/domain/service/scoring.py` é o scoring — funç
 pura e testável, sem LLM).
 
 Este repositório é a API e o pipeline (o backend). O dashboard web é um projeto
-separado — <!-- TODO: link do repo do frontend --> — e é opcional: rodando só
+separado — [jobhound-frontend](https://github.com/BarbosaSantosDev/jobhound-frontend) — e é opcional: rodando só
 este repositório, o resultado chega por notificação no Telegram e pela CLI
 (`jobhound top`). Ver `ARQUITETURA.md` para o fluxo completo.
 
